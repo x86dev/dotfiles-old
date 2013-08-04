@@ -1,0 +1,3 @@
+[submodule ".dircolors"]
+	path = .dircolors
+	url = ./.dircolors/
