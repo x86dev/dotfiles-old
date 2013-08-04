@@ -1,7 +1,6 @@
+#!/bin/sh
 # Aliases for all shells, have to work everywhere!
 
 alias ..='cd ..'
 alias l='ls -lh'
 alias ls='ls -F --color'
-alias ds='ssh root@192.168.0.120'
-
