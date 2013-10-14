@@ -1,5 +1,4 @@
 " Other schemes: 
-" - skittles_berry
 " - ps_color
 syntax enable
 
@@ -18,3 +17,4 @@ if &t_Co == 8 && $TERM !~# '^linux'
 endif
 
 colorscheme solarized
+
