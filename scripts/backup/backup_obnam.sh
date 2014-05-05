@@ -2,7 +2,7 @@
 CUR_PATH=$(readlink -f $0 | xargs dirname)
 CUR_EXITCODE=0
 
-set -x
+#set -x
 
 while [ $# != 0 ]; do
     CUR_PARM="$1"
