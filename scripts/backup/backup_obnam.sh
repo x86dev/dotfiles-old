@@ -2,7 +2,7 @@
 CUR_PATH=$(readlink -f $0 | xargs dirname)
 CUR_EXITCODE=0
 
-#set -x
+set -x
 
 while [ $# != 0 ]; do
     CUR_PARM="$1"
@@ -52,6 +52,7 @@ if [ ! -f "${OBNAM_BIN}" ]; then
     echo "Obnam seems not to be installed, exiting"
     exit 1
 fi
+echo "Obnam binary found at: $OBNAM_BIN"
 
 ## @todo Detect installed notification system (use Growl and friends?).
 ## @todo Check for / install python-fuse (for "mount" command)?
@@ -67,12 +68,17 @@ case "$SCRIPT_CMD" in
         OBNAM_CMD_ROOT="--root ${OBNAM_PROFILE_SRC_PATH}"
         OBNAM_CMD_CLIENTNAME="--client-name=${OBNAM_PROFILE_CLIENT_NAME}"
 
-        OBNAM_LOG_SUFFIX=`date +%y%m%d_%H%M%S`.log
+        OBNAM_LOG_SUFFIX=$(date +%y%m%d_%H%M%S).log
         ## @todo Properly retrieve tmp directory.
         OBNAM_LOG_FILE="/tmp/backup_${OBNAM_LOG_SUFFIX}"
 
-        ${OBNAM_BIN} force-lock ${OBNAM_CMD_REPO}
-
+        # If $OBNAM_PROFILE_DEST_HOST is empty, assume this is a local backup.
+        if [ -z "$OBNAM_PROFILE_DEST_HOST" ]; then
+            mkdir -p "$OBNAM_PROFILE_DEST_PATH" && \
+            ${OBNAM_BIN} force-lock ${OBNAM_CMD_REPO} ${OBNAM_CMD_CLIENTNAME}
+        fi      
+        
+        echo "Backing up client \"${OBNAM_PROFILE_CLIENT_NAME}\" to: $OBNAM_PATH_DEST"
         ${OBNAM_BIN} backup --log=${OBNAM_LOG_FILE} --log-level info ${OBNAM_CMD_REPO} ${OBNAM_CMD_ROOT} ${OBNAM_CMD_CLIENTNAME} --exclude-caches ${OBNAM_PROFILE_EXCLUDES}
         if [ "$?" -ne 0 ]; then
             ${NOTIFY_CMD} ${NOTIFY_PARMS_ERROR} "Error performing backup!"
