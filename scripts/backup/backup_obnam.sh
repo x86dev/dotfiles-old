@@ -78,15 +78,23 @@ case "$SCRIPT_CMD" in
             ${OBNAM_BIN} force-lock ${OBNAM_CMD_REPO} ${OBNAM_CMD_CLIENTNAME}
         fi      
         
+        echo "Started at: $(date --rfc-3339=seconds)"
+        echo "Logging to: $OBNAM_LOG_FILE"
         echo "Backing up client \"${OBNAM_PROFILE_CLIENT_NAME}\" to: $OBNAM_PATH_DEST"
         ${OBNAM_BIN} backup --log=${OBNAM_LOG_FILE} --log-level info ${OBNAM_CMD_REPO} ${OBNAM_CMD_ROOT} ${OBNAM_CMD_CLIENTNAME} --exclude-caches ${OBNAM_PROFILE_EXCLUDES}
         if [ "$?" -ne 0 ]; then
+            echo "Error performing backup!"
             ${NOTIFY_CMD} ${NOTIFY_PARMS_ERROR} "Error performing backup!"
             CUR_EXITCODE=1
         else
-            ${OBNAM_BIN} generations ${OBNAM_CMD_REPO}
+            echo "Backup successfully finished"
+            ${OBNAM_BIN} generations ${OBNAM_CMD_CLIENTNAME} ${OBNAM_CMD_REPO}
             ${NOTIFY_CMD} ${NOTIFY_PARMS_INFO} "Backup successfully finished"
         fi
+        echo "Ended at: $(date --rfc-3339=seconds)"
+        
+        # Move over log to backup destination.
+        install --mode=644 "$OBNAM_LOG_FILE" "$OBNAM_PATH_DEST"
         ;;
     mount)
         echo "Mounting ..."
@@ -105,8 +113,5 @@ case "$SCRIPT_CMD" in
         CUR_EXITCODE=1
         ;;        
 esac
-
-## @todo Move over log to backup destination.
-#install -m 644 "${OBNAM_LOG_FILE}" "${OBNAM_PATH_DEST}/backup$_{OBNAM_LOG_SUFFIX}"
 
 exit $CUR_EXITCODE
