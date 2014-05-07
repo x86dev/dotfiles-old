@@ -57,8 +57,13 @@ echo "Obnam binary found at: $OBNAM_BIN"
 ## @todo Detect installed notification system (use Growl and friends?).
 ## @todo Check for / install python-fuse (for "mount" command)?
 NOTIFY_CMD=$(which notify-send)
-NOTIFY_PARMS_ERROR="-u critical"
-NOTIFY_PARMS_INFO="-u low"
+if [ -n "$NOTIFY_CMD" ]; then
+    NOTIFY_PARMS_ERROR="-u critical"
+    NOTIFY_PARMS_INFO="-u low"
+else
+    # Fall back to plain echo.
+    NOTIFY_CMD=$(which echo)
+fi
 
 case "$SCRIPT_CMD" in
     backup)
