@@ -79,13 +79,13 @@ case "$SCRIPT_CMD" in
 
         # If $OBNAM_PROFILE_DEST_HOST is empty, assume this is a local backup.
         if [ -z "$OBNAM_PROFILE_DEST_HOST" ]; then
-            mkdir -p "$OBNAM_PROFILE_DEST_PATH" && \
-            ${OBNAM_BIN} force-lock ${OBNAM_CMD_REPO} ${OBNAM_CMD_CLIENTNAME}
+            mkdir -p "$OBNAM_PROFILE_DEST_PATH"
         fi      
         
         echo "Started at: $(date --rfc-3339=seconds)"
         echo "Logging to: $OBNAM_LOG_FILE"
         echo "Backing up client \"${OBNAM_PROFILE_CLIENT_NAME}\" to: $OBNAM_PATH_DEST"
+        ${OBNAM_BIN} force-lock ${OBNAM_CMD_REPO} ${OBNAM_CMD_CLIENTNAME} && \
         ${OBNAM_BIN} backup --log=${OBNAM_LOG_FILE} --log-level info ${OBNAM_CMD_REPO} ${OBNAM_CMD_ROOT} ${OBNAM_CMD_CLIENTNAME} --exclude-caches ${OBNAM_PROFILE_EXCLUDES}
         if [ "$?" -ne 0 ]; then
             echo "Error performing backup!"
