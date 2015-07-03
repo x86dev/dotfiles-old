@@ -3,63 +3,159 @@ BASENAME=basename
 ECHO=echo
 MKDIR=mkdir
 MV=mv
+RM=rm
+SCP=scp
 SED=sed
+SSH=ssh
 TEE=tee
+
+SCRIPT_PATH=$(readlink -f $0 | xargs dirname)
+SCRIPT_EXITCODE=0
 
 set -e
 
-BACKUP_BIN=duplicity
-BACKUP_TYPE=incremental
-BACKUP_DIR="/volume1/@backup/ds212"
-BACKUP_DIR_MONTHLY="${BACKUP_DIR}/backup_$(date +%y%m)"
-BACKUP_GPG_KEY="AC27BDB1" # See: http://www.cyberciti.biz/faq/ssh-passwordless-login-with-keychain-for-scripts/
-BACKUP_OPTS="--progress --verbosity=2 --full-if-older-than 30D --volsize=4096 --num-retries=3 --encrypt-key=${BACKUP_GPG_KEY} --exclude-device-files --exclude-other-filesystems"
-BACKUP_TIMESTAMP=$(date "+%Y-%m-%d_%H%M%S")
-BACKUP_LOG_PREFIX="backup-${BACKUP_TIMESTAMP}"
+set -x
 
-# See: http://www.cyberciti.biz/faq/duplicity-installation-configuration-on-debian-ubuntu-linux/ 
+# See: http://www.cyberciti.biz/faq/duplicity-installation-configuration-on-debian-ubuntu-linux/
 #      http://linux-audit.com/gpg-key-generation-not-enough-random-bytes-available/
 
-${MKDIR} -p ${BACKUP_DIR} && \
-${MKDIR} -p ${BACKUP_DIR_MONTHLY} && \
-${BACKUP_BIN} -V &&
+backup_log()
+{
+    ${ECHO} "$1"
+}
 
-backup_task_run()
-{    
-    LOCAL_TARGETS=$1
-    LOCAL_BACKUP_DIR=$2
-    for CUR_TARGET in ${LOCAL_TARGETS}; do
-        CUR_TARGET_SUFFIX=$($ECHO ${CUR_TARGET} | ${SED} 's_/_-_g')
-        CUR_TARGET_DIR=${LOCAL_BACKUP_DIR}/${BACKUP_TARGET_NAME}${CUR_TARGET_SUFFIX}
-        CUR_LOG_FILE_SUFFIX=$($ECHO ${CUR_TARGET}.log | ${SED} 's_/_-_g')
-        CUR_LOG_FILE=/tmp/${BACKUP_LOG_PREFIX}-${BACKUP_TARGET_NAME}${CUR_LOG_FILE_SUFFIX}
-        ${ECHO} "Backing up: ${CUR_TARGET}"
+backup_create_dir()
+{
+    if [ "${BACKUP_TO_REMOTE}" = "1" ]; then
+        backup_log "Creating remote directory: '${2}'"
+        ${SSH} ${BACKUP_DEST_HOST} "mkdir -p ${2}"
+    else
+        backup_log "Creating local directory: '${2}'"
+        ${MKDIR} -p "${2}"
+    fi
+}
+
+backup_move_file()
+{
+    if [ "${BACKUP_TO_REMOTE}" = "1" ]; then
+        LOCAL_FILE=${BACKUP_DEST_HOST}:${2}/$($BASENAME ${1})
+        backup_log "Moving file '${1}' to remote '${LOCAL_FILE}'"
+        ${SCP} -q "${1}" "${LOCAL_FILE}" && ${RM} "${1}"
+    else
+        backup_log "Moving file '${1}' to '${2}'"
+        ${MV} "${1}" "${2}"
+    fi
+}
+
+backup_duplicity_run()
+{
+    LOCAL_DUPLICITY_BIN=duplicity
+    LOCAL_DUPLICITY_BACKUP_TYPE=incremental
+
+    LOCAL_DUPLICITY_OPTS="\
+        --progress \
+        --verbosity=2 \
+        --full-if-older-than 30D \
+        --volsize=4096 \
+        --num-retries=3 \
+        --encrypt-key=${PROFILE_GPG_KEY} \
+        --exclude-device-files \
+        --exclude-other-filesystems"
+
+    LOCAL_HOST=$1
+    LOCAL_SOURCES=$2
+    LOCAL_DEST_DIR=$3
+
+    for CUR_SOURCE in ${LOCAL_SOURCES}; do
+        CUR_SOURCE_SUFFIX=$($ECHO ${CUR_SOURCE} | ${SED} 's_/_-_g')
+        CUR_TARGET_DIR=${LOCAL_DEST_DIR}/${PROFILE_NAME}${CUR_SOURCE_SUFFIX}
+        CUR_LOG_FILE_SUFFIX=$($ECHO ${CUR_SOURCE}.log | ${SED} 's_/_-_g')
+        CUR_LOG_FILE=${BACKUP_PATH_TMP}/${BACKUP_LOG_PREFIX}-${PROFILE_NAME}${CUR_LOG_FILE_SUFFIX}
+        ${ECHO} "Backing up: ${CUR_SOURCE}"
         ${ECHO} "    Target: ${CUR_TARGET_DIR}"
         ${ECHO} "    Log   : ${CUR_LOG_FILE}"
-        ${MKDIR} -p ${CUR_TARGET_DIR}
-        ${BACKUP_BIN} ${BACKUP_TYPE} ${BACKUP_OPTS} ${CUR_TARGET} file://${CUR_TARGET_DIR}  2>&1 | ${TEE} ${CUR_LOG_FILE}
-        ${MV} ${CUR_LOG_FILE} ${CUR_TARGET_DIR}
+        backup_create_dir "${LOCAL_HOST}" "${CUR_TARGET_DIR}"
+        ${LOCAL_DUPLICITY_BIN} ${LOCAL_DUPLICITY_BACKUP_TYPE} ${LOCAL_DUPLICITY_OPTS} \
+            ${CUR_SOURCE} ${BACKUP_PATH_PREFIX}/${CUR_TARGET_DIR}  2>&1 | ${TEE} ${CUR_LOG_FILE}
+        backup_move_file "${CUR_LOG_FILE}" "${CUR_TARGET_DIR}"
     done
 }
 
-BACKUP_TARGET_NAME=ds212
+while [ $# != 0 ]; do
+    CUR_PARM="$1"
+    shift
+    case "$CUR_PARM" in
+        backup)
+            SCRIPT_CMD="backup"
+            ;;
+        --profile)
+            SCRIPT_PROFILE_FILE="$1"
+            ;;
+        *)
+            ;;
+    esac
+done
 
-BACKUP_TARGETS_ONCE="\
-    /etc
-    /volume2/com \
-    /volume2/comedy \
-    /volume2/downloads \
-    /volume2/movies \
-    /volume2/tv" 
+if [ -z "${SCRIPT_CMD}" ]; then
+    ${ECHO} "Must specify a (valid) command to execute, exiting"
+    exit 1
+fi
 
-backup_task_run "${BACKUP_TARGETS_ONCE}" "${BACKUP_DIR}"
+if [ -z "${SCRIPT_PROFILE_FILE}" ]; then
+    ${ECHO} "Must specify a profile name using --profile (e.g. --profile foo.conf), exiting"
+    exit 1
+fi
 
-BACKUP_TARGETS_MONTHLY="\
-    /volume2/ebooks \
-    /volume2/incoming \
-    /volume2/learning \
-    /volume2/pictures \
-    /volume2/mags \
-    /volume2/music" 
+SCRIPT_PROFILE_FILE=${SCRIPT_PATH}/${SCRIPT_PROFILE_FILE}
+if [ ! -f "${SCRIPT_PROFILE_FILE}" ]; then
+    CUR_PROFILE=${SCRIPT_PROFILE_FILE}
+    if [ ! -f "${SCRIPT_PROFILE_FILE}" ]; then
+        ${ECHO} "Profile \"${SCRIPT_PROFILE_FILE}\" not found, exiting"
+        exit 1
+    fi
+fi
 
-backup_task_run "${BACKUP_TARGETS_MONTHLY}" "${BACKUP_DIR_MONTHLY}"
+${ECHO} "Using profile: ${SCRIPT_PROFILE_FILE}"
+. ${SCRIPT_PROFILE_FILE}
+
+if [ "${PROFILE_DEST_HOST}" = "localhost" ]; then
+    BACKUP_TO_REMOTE=0
+else
+    BACKUP_TO_REMOTE=1
+fi
+
+BACKUP_PATH_TMP=/tmp
+${ECHO} "Using temp dir: ${BACKUP_PATH_TMP}"
+
+if [ "${BACKUP_TO_REMOTE}" = "1" ]; then
+    if [ -n "${PROFILE_DEST_USERNAME}" ]; then
+        BACKUP_DEST_HOST=${PROFILE_DEST_USERNAME}@${PROFILE_DEST_HOST}
+    else
+        BACKUP_DEST_HOST=${PROFILE_DEST_HOST}
+    fi
+    BACKUP_PATH_PREFIX=scp://${BACKUP_DEST_HOST}
+else
+    BACKUP_DEST_HOST=localhost
+    BACKUP_PATH_PREFIX=file://
+fi
+BACKUP_DEST_DIR=${PROFILE_DEST_DIR}
+
+BACKUP_DEST_DIR_MONTHLY="${BACKUP_DEST_DIR}/backup_$(date +%y%m)"
+
+BACKUP_TIMESTAMP=$(date "+%Y-%m-%d_%H%M%S")
+BACKUP_LOG_PREFIX="backup-${BACKUP_TIMESTAMP}"
+
+case "$SCRIPT_CMD" in
+    backup)
+        backup_create_dir "${BACKUP_DEST_HOST}" "${BACKUP_DEST_DIR}"
+        backup_create_dir "${BACKUP_DEST_HOST}" "${BACKUP_DEST_DIR_MONTHLY}"
+        backup_duplicity_run "${BACKUP_DEST_HOST}" "${PROFILE_SOURCES_ONCE}" "${BACKUP_DEST_DIR}"
+        backup_duplicity_run "${BACKUP_DEST_HOST}" "${PROFILE_SOURCES_MONTHLY}" "${BACKUP_DEST_DIR_MONTHLY}"
+        ;;
+    *)
+        ${ECHO} "Unknown command \"$SCRIPT_CMD\", exiting"
+        SCRIPT_EXITCODE=1
+        ;;
+esac
+
+exit ${SCRIPT_EXITCODE}
