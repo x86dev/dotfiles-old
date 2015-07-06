@@ -28,7 +28,7 @@ backup_create_dir()
 {
     if [ "${BACKUP_TO_REMOTE}" = "1" ]; then
         backup_log "Creating remote directory: '${2}'"
-        ${SSH} ${BACKUP_DEST_HOST} "mkdir -p ${2}"
+        ${SSH} ${BACKUP_SSH_OPTS} ${BACKUP_DEST_HOST} "mkdir -p ${2}"
     else
         backup_log "Creating local directory: '${2}'"
         ${MKDIR} -p "${2}"
@@ -40,7 +40,7 @@ backup_move_file()
     if [ "${BACKUP_TO_REMOTE}" = "1" ]; then
         LOCAL_FILE=${BACKUP_DEST_HOST}:${2}/$($BASENAME ${1})
         backup_log "Moving file '${1}' to remote '${LOCAL_FILE}'"
-        ${SCP} -q "${1}" "${LOCAL_FILE}" && ${RM} "${1}"
+        ${SCP} ${BACKUP_SCP_OPTS} "${1}" "${LOCAL_FILE}" && ${RM} "${1}"
     else
         backup_log "Moving file '${1}' to '${2}'"
         ${MV} "${1}" "${2}"
@@ -53,6 +53,7 @@ backup_duplicity_run()
     LOCAL_DUPLICITY_BACKUP_TYPE=incremental
 
     LOCAL_DUPLICITY_OPTS="\
+        ${LOCAL_DUPLICITY_OPTS}
         --progress \
         --verbosity=2 \
         --full-if-older-than 30D \
@@ -75,8 +76,8 @@ backup_duplicity_run()
         ${ECHO} "    Target: ${CUR_TARGET_DIR}"
         ${ECHO} "    Log   : ${CUR_LOG_FILE}"
         backup_create_dir "${LOCAL_HOST}" "${CUR_TARGET_DIR}"
-        ${LOCAL_DUPLICITY_BIN} ${LOCAL_DUPLICITY_BACKUP_TYPE} ${LOCAL_DUPLICITY_OPTS} \
-            ${CUR_SOURCE} ${BACKUP_PATH_PREFIX}/${CUR_TARGET_DIR}  2>&1 | ${TEE} ${CUR_LOG_FILE}
+        ${LOCAL_DUPLICITY_BIN} ${LOCAL_DUPLICITY_BACKUP_TYPE} ${LOCAL_DUPLICITY_OPTS} ${CUR_SOURCE} ${BACKUP_PATH_PREFIX}/${CUR_TARGET_DIR} \
+            2>&1 | ${TEE} ${CUR_LOG_FILE}
         backup_move_file "${CUR_LOG_FILE}" "${CUR_TARGET_DIR}"
     done
 }
@@ -124,6 +125,11 @@ else
     BACKUP_TO_REMOTE=1
 fi
 
+if [ -n "${PROFILE_DEST_SSH_PORT}" ]; then
+    BACKUP_SCP_OPTS="-q -P ${PROFILE_DEST_SSH_PORT}"
+    BACKUP_SSH_OPTS="-p ${PROFILE_DEST_SSH_PORT}"
+fi
+
 BACKUP_PATH_TMP=/tmp
 ${ECHO} "Using temp dir: ${BACKUP_PATH_TMP}"
 
@@ -133,7 +139,11 @@ if [ "${BACKUP_TO_REMOTE}" = "1" ]; then
     else
         BACKUP_DEST_HOST=${PROFILE_DEST_HOST}
     fi
-    BACKUP_PATH_PREFIX=scp://${BACKUP_DEST_HOST}
+    if [ -n "${PROFILE_DEST_SSH_PORT}" ]; then
+        BACKUP_PATH_PREFIX=scp://${BACKUP_DEST_HOST}:${PROFILE_DEST_SSH_PORT}
+    else
+        BACKUP_PATH_PREFIX=scp://${BACKUP_DEST_HOST}
+    fi
 else
     BACKUP_DEST_HOST=localhost
     BACKUP_PATH_PREFIX=file://
@@ -151,6 +161,9 @@ case "$SCRIPT_CMD" in
         backup_create_dir "${BACKUP_DEST_HOST}" "${BACKUP_DEST_DIR_MONTHLY}"
         backup_duplicity_run "${BACKUP_DEST_HOST}" "${PROFILE_SOURCES_ONCE}" "${BACKUP_DEST_DIR}"
         backup_duplicity_run "${BACKUP_DEST_HOST}" "${PROFILE_SOURCES_MONTHLY}" "${BACKUP_DEST_DIR_MONTHLY}"
+        ;;
+    test)
+        ## @todo Implement this.
         ;;
     *)
         ${ECHO} "Unknown command \"$SCRIPT_CMD\", exiting"
