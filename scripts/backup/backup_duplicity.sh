@@ -1,6 +1,7 @@
 #!/bin/sh
 BASENAME=basename
 ECHO=echo
+GPG=gpg
 MKDIR=mkdir
 MV=mv
 RM=rm
@@ -13,8 +14,10 @@ SCRIPT_PATH=$(readlink -f $0 | xargs dirname)
 SCRIPT_EXITCODE=0
 
 set -e
+#set -x
 
-set -x
+# Important: https://bugs.launchpad.net/duplicity/+bug/687295
+# Currently the locale *must* be set to en_US.UTF-8 in order to get encryption with a public working!
 
 # See: http://www.cyberciti.biz/faq/duplicity-installation-configuration-on-debian-ubuntu-linux/
 #      http://linux-audit.com/gpg-key-generation-not-enough-random-bytes-available/
@@ -22,6 +25,12 @@ set -x
 backup_log()
 {
     ${ECHO} "$1"
+}
+
+backup_setup()
+{
+    ${ECHO} "Testing key: ${PROFILE_GPG_KEY}"
+    ${ECHO} "1234" | ${GPG} --no-use-agent -o /dev/null --local-user ${PROFILE_GPG_KEY} -as - && echo "The correct passphrase was entered for your key."
 }
 
 backup_create_dir()
@@ -50,11 +59,11 @@ backup_move_file()
 backup_duplicity_run()
 {
     LOCAL_DUPLICITY_BIN=duplicity
-    LOCAL_DUPLICITY_BACKUP_TYPE=incremental
+    LOCAL_DUPLICITY_BACKUP_TYPE=incr
 
     LOCAL_DUPLICITY_OPTS="\
         ${LOCAL_DUPLICITY_OPTS}
-        --progress \
+        --name ${PROFILE_NAME} \
         --verbosity=2 \
         --full-if-older-than 30D \
         --volsize=4096 \
@@ -80,6 +89,31 @@ backup_duplicity_run()
             2>&1 | ${TEE} ${CUR_LOG_FILE}
         backup_move_file "${CUR_LOG_FILE}" "${CUR_TARGET_DIR}"
     done
+
+    # Taken from: https://lists.gnu.org/archive/html/duplicity-talk/2008-05/msg00061.html
+    #
+    # ...
+    # cases where we do not need to get a passphrase:
+    # full: with pubkey enc. doesn't depend on old encrypted info
+    # inc and pubkey enc.: need a manifest, which the archive dir has unencrypted
+    # with encryption disabled
+    # listing files: needs a manifest, but the archive dir has that
+    # collection status only looks at a repository
+    # ...
+    #
+
+    #gpg --armor --export -a 841BFBA2 > duplicitysignpublic.key
+    #gpg --armor --export -a F953BE5A > duplicityencryptpublic.key
+    #gpg --armor --export-secret-keys -a 841BFBA2 > duplicitysignprivate.key
+    #gpg --armor --export-secret-keys -a F953BE5A > duplicityencryptprivate.key
+
+    # ??? gpg -d duplicity-backup-2014-06-10.tar.gpg | tar x
+}
+
+backup_debian()
+{
+    dpkg --get-selections > selections-$(date -I)
+    dpkg --set-selections < selections-$(date -I)
 }
 
 while [ $# != 0 ]; do
@@ -119,6 +153,8 @@ fi
 ${ECHO} "Using profile: ${SCRIPT_PROFILE_FILE}"
 . ${SCRIPT_PROFILE_FILE}
 
+#backup_setup
+
 if [ "${PROFILE_DEST_HOST}" = "localhost" ]; then
     BACKUP_TO_REMOTE=0
 else
@@ -157,13 +193,22 @@ BACKUP_LOG_PREFIX="backup-${BACKUP_TIMESTAMP}"
 
 case "$SCRIPT_CMD" in
     backup)
+        LANG_OLD=${LANG}
+        export LANG=en_US.UTF-8
+        export PASSPHRASE=notused
+        backup_log "Backup started."
         backup_create_dir "${BACKUP_DEST_HOST}" "${BACKUP_DEST_DIR}"
         backup_create_dir "${BACKUP_DEST_HOST}" "${BACKUP_DEST_DIR_MONTHLY}"
         backup_duplicity_run "${BACKUP_DEST_HOST}" "${PROFILE_SOURCES_ONCE}" "${BACKUP_DEST_DIR}"
         backup_duplicity_run "${BACKUP_DEST_HOST}" "${PROFILE_SOURCES_MONTHLY}" "${BACKUP_DEST_DIR_MONTHLY}"
+        export LANG=${LANG_OLD}
+        backup_log "Backup successfully finished."
         ;;
     test)
         ## @todo Implement this.
+        ;;
+    setup)
+        backup_setup
         ;;
     *)
         ${ECHO} "Unknown command \"$SCRIPT_CMD\", exiting"
