@@ -1,0 +1,44 @@
+ACTION!="add", GOTO="android_usb_rules_end"
+SUBSYSTEM!="usb", GOTO="android_usb_rules_end"
+
+LABEL="android_usb_rules_begin"
+
+# Teclast X98 (C9J8)
+# ADB
+SUBSYSTEM=="usb", ATTR{idVendor}=="8087", ATTR{idProduct}=="0a5f", MODE="0666", OWNER="jiinx", ENV{adb_matched}="yes"
+# ADB Sideload
+SUBSYSTEM=="usb", ATTR{idVendor}=="8087", ATTR{idProduct}=="09ef", MODE="0666", OWNER="jiinx", ENV{adb_matched}="yes"
+# Fastboot (DnX mode)
+SUBSYSTEM=="usb", ATTR{idVendor}=="8087", ATTR{idProduct}=="0a65", MODE="0666", OWNER="jiinx"
+
+# Nexus 5
+# ADB
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee2", MODE="0666", OWNER="jiinx", ENV{adb_matched}="yes"
+# ADB Sideload
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="d002", MODE="0666", OWNER="jiinx", ENV{adb_matched}="yes"
+# Fastboot
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee0", MODE="0666", OWNER="jiinx"
+
+# Nexus 4
+# ADB
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee2", MODE="0666", OWNER="jiinx", ENV{adb_matched}="yes"
+# Fastboot
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4ee0", MODE="0666", OWNER="jiinx"
+
+# Nexus One
+# ADB
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="4e12", MODE="0666", OWNER="jiinx", ENV{adb_matched}="yes"
+# Fastboot
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bb4", ATTR{idProduct}=="0fff", MODE="0666", OWNER="jiinx"
+
+# Galaxy S3 Neo
+# ADB
+SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", ATTR{idProduct}=="6860", MODE="0666", OWNER="jiinx", ENV{adb_matched}="yes"
+
+# If a match is found, then add the device and run the adb server
+ENV{adb_matched}!="yes", GOTO="android_usb_rules_end"
+ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
+SYMLINK+="android_adb", MODE="0664", GROUP="usb"
+RUN+="/home/jiinx/opt/platform-tools/adb devices"
+
+LABEL="android_usb_rules_end"
