@@ -16,7 +16,7 @@ SCRIPT_PATH=$(readlink -f $0 | xargs dirname)
 SCRIPT_EXITCODE=0
 
 set -e
-set -x
+#set -x
 
 # Important: https://bugs.launchpad.net/duplicity/+bug/687295
 # Currently the locale *must* be set to en_US.UTF-8 in order to get encryption with a public working!
@@ -67,8 +67,8 @@ backup_duplicity_run()
     LOCAL_DUPLICITY_BIN=duplicity
     LOCAL_DUPLICITY_BACKUP_TYPE=incr
 
-    LOCAL_DUPLICITY_TEMPDIR=${LOCAL_DEST_DIR}/${PROFILE_NAME}
-    backup_create_dir "$LOCAL_HOST" "$LOCAL_DUPLICITY_TEMPDIR"
+    # Use a separate temp directory for Duplicity in the profile directory.
+    backup_create_dir "$LOCAL_HOST" "$LOCAL_DEST_DIR"
 
     LOCAL_DUPLICITY_OPTS="\
         --name $PROFILE_NAME \
@@ -98,7 +98,7 @@ backup_duplicity_run()
         ${ECHO} "Backing up: $CUR_SOURCE"
         ${ECHO} "    Target: $CUR_TARGET_DIR"
         ${ECHO} "      Temp: $LOCAL_DUPLICITY_TEMPDIR"
-        ${ECHO} "    Log   : $CUR_LOG_FILE"
+        ${ECHO} "       Log: $CUR_LOG_FILE"
         backup_create_dir "$LOCAL_HOST" "$CUR_TARGET_DIR"
         ${LOCAL_DUPLICITY_BIN} ${LOCAL_DUPLICITY_BACKUP_TYPE} ${LOCAL_DUPLICITY_OPTS} ${CUR_SOURCE} ${BACKUP_DUPLICITY_PATH_PREFIX}/${CUR_TARGET_DIR} \
             2>&1 | ${TEE} ${CUR_LOG_FILE}
