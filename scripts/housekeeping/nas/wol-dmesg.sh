@@ -29,8 +29,13 @@
 #       Everything else should come out-of-the-box.
 #
 
-TARGET_IP=192.168.1.XXX
-TARGET_MAC=de:ad:be:ef
+CUR_PATH=$(readlink -f $0 | xargs dirname)
+CUR_EXITCODE=0
+
+CFG_FILE=${CUR_PATH}/wol-dmesg.conf
+
+echo "Using config: ${CFG_FILE}"
+. ${CFG_FILE}
 
 PING_RETRIES=1
 
