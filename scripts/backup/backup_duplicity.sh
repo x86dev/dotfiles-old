@@ -211,6 +211,14 @@ backup_duplicity_run()
     LOCAL_DUPLICITY_BACKUP_TYPE=incr
     LOCAL_DUPLICITY_TEMPDIR=/tmp
 
+    # Make sure that Duplcity's lockfile is gone.
+    # It can happen if a stale lockfile still is around if something weird happened before.
+    LOCAL_DUPLICITY_LOCKFILE="$HOME/.cache/duplicity/$PROFILE_NAME/lockfile.lock"
+    if [ -e "$LOCAL_DUPLICITY_LOCKFILE" ]; then
+        backup_log "Old lockfile around, removing ..."
+        rm ${LOCAL_DUPLICITY_LOCKFILE}
+    fi
+
     # Use a separate temp directory for Duplicity in the profile directory.
     backup_create_dir "$LOCAL_HOST" "$LOCAL_DEST_DIR"
 
@@ -424,10 +432,10 @@ if [ "$BACKUP_TO_REMOTE" = "1" ]; then
         BACKUP_DEST_HOST=${PROFILE_DEST_HOST}
     fi
     if [ -n "$PROFILE_DEST_SSH_PORT" ]; then
-        BACKUP_DUPLICITY_PATH_PREFIX=scp://${BACKUP_DEST_HOST}:${PROFILE_DEST_SSH_PORT}
+        BACKUP_DUPLICITY_PATH_PREFIX=sftp://${BACKUP_DEST_HOST}:${PROFILE_DEST_SSH_PORT}
         BACKUP_RSYNC_PATH_PREFIX=${BACKUP_DEST_HOST}:
     else
-        BACKUP_DUPLICITY_PATH_PREFIX=scp://${BACKUP_DEST_HOST}
+        BACKUP_DUPLICITY_PATH_PREFIX=sftp://${BACKUP_DEST_HOST}
         BACKUP_RSYNC_PATH_PREFIX=${BACKUP_DEST_HOST}:${PROFILE_DEST_SSH_PORT}
     fi
 else
