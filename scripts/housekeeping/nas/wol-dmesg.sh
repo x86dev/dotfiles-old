@@ -66,13 +66,13 @@ while true; do
 
     if [ "$LOG_MSG_ID_NEW" != "" -a "$LOG_MSG_ID_NEW" != "$LOG_MSG_ID_OLD" ]; then
         if ping -qc ${PING_RETRIES} ${TARGET_IP} > /dev/null; then
-            echo "["`date`"] NOWAKE Accessed by $LOG_SRC_NAME ($LOG_SRC_IP) (port $LOG_DST_PORT) and is already alive." >> ${LOG_FILE}
+            echo "["`date`"] Accessed by $LOG_SRC_NAME ($LOG_SRC_IP) (port $LOG_DST_PORT) and is already alive"
         else
-            echo "["`date`"] WAKE $LOG_SRC_NAME ($LOG_SRC_IP) causes wake on lan (port $LOG_DST_PORT)." >> ${LOG_FILE}
+            echo "["`date`"] $LOG_SRC_NAME ($LOG_SRC_IP) causes wake on lan (port $LOG_DST_PORT)." >> ${LOG_FILE}
             ${WOL} ${WOL_OPTS} ${TARGET_MAC} 2>&1 >> ${LOG_FILE}
        fi
        LOG_MSG_ID_OLD=$LOG_MSG_ID_NEW
-       echo "["`date`"] Sleeping for $SLEEP_SEC_ALIVE seconds ..." >> ${LOG_FILE}
+       echo "["`date`"] Sleeping for $SLEEP_SEC_ALIVE seconds ..."
        sleep ${SLEEP_SEC_ALIVE}
        dmesg -c
     fi
