@@ -152,6 +152,7 @@ def main():
 
     if len(aArgs) < 1:
         print("No host specified, e.g. http://<ip>:<port>\n");
+        print("Usually Emby runs on port 8096 (http) or 8920 (https).\n\n");
         sys.exit(1);
     
     g_sHost = aArgs[0];
