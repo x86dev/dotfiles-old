@@ -186,11 +186,14 @@ def main():
         sys.exit(1);
 
     if g_fDryRun:
-        print("*** Dryrun mode -- no movies removed! ***");
+        print("*** Dryrun mode -- no files changed! ***");
 
     print("Connecting to: %s" % (g_sHost));
         
     embyCleanup();
+
+    if g_fDryRun:
+        print("\n*** Dryrun mode -- no files changed! ***");
 
 if __name__ == "__main__":
     main();
