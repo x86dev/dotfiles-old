@@ -1,5 +1,17 @@
 #!/bin/sh
 
+rescue_mount()
+{
+	MY_MOUNT_POINT=/mnt/rescue
+
+	mkdir -p ${MY_MOUNT_POINT}
+	mount /dev/${1} ${MY_MOUNT_POINT}
+	for dir in /dev /dev/pts /proc /sys /run; do sudo mount --bind $dir ${MY_MOUNT_POINT}/$dir; done 
+	sudo cp /proc/mounts ${MY_MOUNT_POINT}/etc/mtab
+	mount -o bind /etc/resolv.conf ${MY_MOUNT_POINT}/etc/resolv.conf 
+	chroot ${MY_MOUNT_POINT} /bin/bash
+}
+
 #
 # Renames a set of files with same file extension to another
 # file extension: _rename JPG jpg
