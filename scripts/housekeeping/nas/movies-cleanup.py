@@ -28,7 +28,7 @@ arrVideoTypes = [ tFileDupe('mkv' , 0),
 
 arrDirsToDelete = [ '.*/_UNPACK_*' ];
 
-arrFileExtsToDelete = [ 'url', 'nzb', 'exe', 'com', 'bat', 'cmd', 'scr', 'rar', 'zip', '7z' ];
+arrFileExtsToDelete = [ 'url', 'nzb', 'sample', 'par', 'exe', 'com', 'bat', 'cmd', 'scr', 'rar', 'zip', '7z' ];
 
 # Taken from: http://stackoverflow.com/questions/5194057/better-way-to-convert-file-sizes-in-python
 # Slightly modified to handle byte sizes as well.
