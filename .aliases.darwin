@@ -1,0 +1,9 @@
+#!/bin/sh
+# Aliases for MacOS (Darwin).
+
+alias ls='ls -G'
+alias ll='ls -G -al'
+
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'

@@ -52,11 +52,11 @@ _OS="`sysctl -n kern.ostype 2>/dev/null`"
 if test -z "${_OS}"; then
 	case "`uname -sr`" in
 		*BSD*)     _OS=`uname -s`;;
-		SunOS\ 4*) _OS=SunOS;;
-		SunOS\ 5*) _OS=Solaris;;
-		IRIX\ 5*)  _OS=IRIX;;
-		HP*)       _OS=HP-UX;;
-		Linux*)    _OS=Linux;;
+		SunOS\ 4*) _OS=sunos;;
+		SunOS\ 5*) _OS=solaris;;
+		IRIX\ 5*)  _OS=irix;;
+		HP*)       _OS=hp-ux;;
+		Linux*)    _OS=linux;;
 		*)         _OS=generic
 			echo "warning: can't map \"`uname -sr`\" to an OS string,"
 			echo "assuming ${_OS}. Edit your .profile if this is wrong."
@@ -92,6 +92,8 @@ esac
 # Set umask
 umask u=rwx,g=rx,o=rx
 
+echo "OS: ${_OS}"
+
 # Set the sequence of initialization:
 # functions is first so that functions are usable by other dot files;
 # functions, envars and aliases should not produce any output. Commands
@@ -125,5 +127,9 @@ for _setup in ${_SETUP}; do
 		fi
 	done
 done
+
+export MY_HOST=${_HOST}
+export MY_OS=${_OS}
+
 unset _setup _SETUP _OS _HOST _SHELL _WHAT _PRINT
 : # Force a true exit status.
