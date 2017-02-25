@@ -174,13 +174,6 @@ def main():
         print "For help use --help"
         sys.exit(2)
 
-    if len(aArgs) < 1:
-        print("No host specified, e.g. http://<ip>:<port>\n")
-        print("Usually Emby runs on port 8096 (http) or 8920 (https).\n\n")
-        sys.exit(1)
-
-    g_sHost = aArgs[0]
-
     for o, a in aOpts:
         if o in ("--delete"):
             g_fDryRun = False
@@ -189,18 +182,27 @@ def main():
             sys.exit(0)
         elif o in ("--password"):
             g_sPassword = a
+        elif o in ("--provider"):
+            g_sProvider = a
         elif o in ("--rating-none"):
             g_fRatingNone = True
         elif o in ("--rating-min"):
             g_dbRatingMin = float(a)
         elif o in ("--username"):
-            g_sUsername = a
-        elif o in ("--provider"):
-            g_sProvider = a
+            g_sUsername = a           
         elif o in ("-v"):
             g_cVerbosity += 1
         else:
             assert False, "Unhandled option"
+
+    # Do the argument checking after the options parsing so that
+    # we can handle commands like "--help" and friends.
+    if len(aArgs) < 1:
+        print("No host specified, e.g. http://<ip>:<port>\n")
+        print("Usually Emby runs on port 8096 (http) or 8920 (https).\n\n")
+        sys.exit(1)
+
+    g_sHost = aArgs[0]
 
     if not g_sUsername:
         print("No username specified\n")
